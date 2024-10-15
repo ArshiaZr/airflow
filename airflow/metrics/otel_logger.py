@@ -23,7 +23,6 @@ import warnings
 from functools import partial
 from typing import TYPE_CHECKING, Callable, Iterable, Union
 
-from airflow.metrics.base_stats_logger import StatsLogger
 from opentelemetry import metrics
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.metrics import Observation
@@ -174,7 +173,7 @@ class _OtelTimer(Timer):
             )
 
 
-class SafeOtelLogger(StatsLogger):
+class SafeOtelLogger:
     """Otel Logger."""
 
     def __init__(
@@ -304,7 +303,7 @@ class SafeOtelLogger(StatsLogger):
     def get_name(self, metric_name: str, tags: dict[str, str]) -> str:
         """
         OpenTelemetry supports tagging natively, so return the metric name without modification.
-        
+
         :param metric_name: The base metric name.
         :param tags: A dictionary of tags (ignored for OTel, as it supports native tagging).
         :return: The base metric name.
@@ -315,6 +314,7 @@ class SafeOtelLogger(StatsLogger):
                 f"Metric name '{metric_name}' exceeds {OTEL_NAME_MAX_LENGTH} characters."
             )
         return metric_name
+
 
 class MetricsMap:
     """Stores Otel Instruments."""

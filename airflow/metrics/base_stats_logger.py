@@ -82,10 +82,9 @@ class StatsLogger(Protocol):
 
     @classmethod
     def get_name(cls, metric_name: str, tags: dict[str, str]) -> str:
-        """
-        Abstract method to return the formatted metric name based on the backend's implementation.
-        """
+        """Abstract method to return the formatted metric name based on the backend's implementation."""
         raise NotImplementedError()
+
 
 class NoStatsLogger:
     """If no StatsLogger is configured, NoStatsLogger is used as a fallback."""
