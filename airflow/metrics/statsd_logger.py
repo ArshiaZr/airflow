@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Callable, TypeVar, cast
 
 from airflow.configuration import conf
 from airflow.exceptions import AirflowConfigException
+from airflow.metrics.base_stats_logger import StatsLogger
 from airflow.metrics.protocols import Timer
 from airflow.metrics.validators import (
     PatternAllowListValidator,
@@ -64,7 +65,7 @@ def prepare_stat_with_tags(fn: T) -> T:
     return cast(T, wrapper)
 
 
-class SafeStatsdLogger:
+class SafeStatsdLogger(StatsLogger):
     """StatsD Logger."""
 
     def __init__(
@@ -83,16 +84,21 @@ class SafeStatsdLogger:
     @validate_stat
     def incr(
         self,
-        stat: str,
+        metric_name: str,
         count: int = 1,
         rate: float = 1,
         *,
         tags: dict[str, str] | None = None,
     ) -> None:
-        """Increment stat."""
-        if self.metrics_validator.test(stat):
-            return self.statsd.incr(stat, count, rate)
-        return None
+        """
+        Increment the specified metric.
+        
+        :param metric_name: The base metric name.
+        :param count: The amount to increment by.
+        :param tags: A dictionary of tags to be associated with the metric.
+        """
+        full_metric_name = self.get_name(metric_name, tags)
+        return self.statsd.incr(full_metric_name, count, rate)
 
     @prepare_stat_with_tags
     @validate_stat
@@ -152,6 +158,19 @@ class SafeStatsdLogger:
         if stat and self.metrics_validator.test(stat):
             return Timer(self.statsd.timer(stat, *args, **kwargs))
         return Timer()
+
+    def get_name(self, metric_name: str, tags: dict[str, str]) -> str:
+        """
+        Concatenate the metric name with tags for StatsD, as StatsD doesn't support tags natively.
+        
+        :param metric_name: The base metric name.
+        :param tags: A dictionary of tags to be appended to the metric name.
+        :return: The formatted metric name with tags concatenated.
+        """
+        if tags:
+            tags_str = '.'.join([f'{k}.{v}' for k, v in tags.items()])
+            return f"{metric_name}.{tags_str}"
+        return metric_name
 
 
 def get_statsd_logger(cls) -> SafeStatsdLogger:
